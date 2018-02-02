@@ -21,16 +21,19 @@
 #include <ArduinoSound.h>
 
 // sample rate for the input
-const int sampleRate = 8000;
+const int sampleRate = 8192;
 
 // size of the FFT to compute
-const int fftSize = 128;
+const int fftSize = 64;
 
 // size of the spectrum output, half of FFT size
 const int spectrumSize = fftSize / 2;
 
 // array to store spectrum output
 int spectrum[spectrumSize];
+
+// array to store spectrum average
+int spectrum_avg[spectrumSize];
 
 // create an FFT analyzer to be used with the I2S input
 FFTAnalyzer fftAnalyzer(fftSize);
@@ -61,28 +64,45 @@ void setup() {
 }
 
 void loop() {
-  // check if a new analysis is available
-  if (fftAnalyzer.available()) {
-    // read the new spectrum
-    fftAnalyzer.read(spectrum, spectrumSize);
-
-    int g_start_idx = 0;
-    int g_step = 1;
-    // print out the spectrum
-    if (single) {
-      for (int i = g_start_idx; i < spectrumSize; i++) {
-        Serial.print((i * sampleRate) / fftSize); // the starting frequency
-        Serial.print("\t"); // 
-        Serial.println(spectrum[i]); // the spectrum value
+  int last_save = millis();
+  int sample_cnt = 0;
+  // Loop until 1000 ms is gone
+  while ((millis() - last_save) < 1000) {
+    // check if a new analysis is available
+    if (fftAnalyzer.available()) {
+      sample_cnt++;
+      // read the new spectrum
+      fftAnalyzer.read(spectrum, spectrumSize);
+      // Add all values to avg array
+      for (int i = 0; i < spectrumSize; i++) {
+        spectrum_avg[i] += spectrum[i];
       }
-    } else {
-      // print out the spectrum, multiple lines
-      for (int i = g_start_idx; i < spectrumSize; i += g_step) {
-        Serial.print(spectrum[i]); // the spectrum value
-        Serial.print("\t"); // 
-      }
-      Serial.println();
     }
-  
   }
+  for (int i = 0; i < spectrumSize; i++) {
+    spectrum_avg[i] /= sample_cnt;
+  }
+    
+  int g_start_idx = 1;
+  //int g_stop_idx = 20; // or spectrumSize
+  int g_stop_idx = spectrumSize;
+  int g_step = 1;
+  // print out the spectrum
+  if (single) {
+    for (int i = g_start_idx; i < g_stop_idx; i++) {
+      Serial.print((i * sampleRate) / fftSize); // the starting frequency
+      Serial.print("\t"); // 
+      Serial.println(spectrum_avg[i]); // the spectrum value
+    }
+  } else {
+    // print out the spectrum, multiple lines
+    for (int i = g_start_idx; i < g_stop_idx; i += g_step) {
+      Serial.print((i * sampleRate) / fftSize); // the starting frequency
+      Serial.print("\t"); // 
+      Serial.print(spectrum_avg[i]); // the spectrum value
+      Serial.print("\t"); // 
+    }
+    Serial.println();
+  }
+  
 }
