@@ -37,16 +37,16 @@ FFTAnalyzer fftAnalyzer(fftSize);
 
 void connectWifi() {
   Serial.print("Attempting to connect to Network named: ");
-  Serial.println(ssid);          // print the network name (SSID);
+  Serial.println(WIFI_SSID);          // print the network name (SSID);
   int connect_start = millis();
   while (status != WL_CONNECTED) {
     Serial.print(".");
-    if(strlen(pass) == 0) {
+    if(strlen(WIFI_PASSWORD) == 0) {
       // Connect to open network
-      status = WiFi.begin(ssid);
+      status = WiFi.begin(WIFI_SSID);
     } else {
       // Connect to WPA/WPA2 network
-      status = WiFi.begin(ssid, pass);
+      status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     }
     if ((millis() - connect_start) > 30000) {
       Serial.println();
