@@ -26,8 +26,10 @@ const int spectrumSize = fftSize / 2;
 // array to store spectrum output
 int spectrum[spectrumSize];
 
-// array to store spectrum average
+// array to store spectrum averages
 int spectrum_avg[spectrumSize];
+int spectrum_avg60s[spectrumSize];
+int sample_cnt60s = 0;
 
 // create an FFT analyzer to be used with the I2S input
 FFTAnalyzer fftAnalyzer(fftSize);
@@ -39,10 +41,13 @@ void connectWifi() {
   int connect_start = millis();
   while (status != WL_CONNECTED) {
     Serial.print(".");
-    // Connect to WPA/WPA2 network
-    //status = WiFi.begin(ssid, pass);
-    // Connect to open network
-    status = WiFi.begin(ssid);
+    if(strlen(pass) == 0) {
+      // Connect to open network
+      status = WiFi.begin(ssid);
+    } else {
+      // Connect to WPA/WPA2 network
+      status = WiFi.begin(ssid, pass);
+    }
     if ((millis() - connect_start) > 30000) {
       Serial.println();
       Serial.println("Connect failed.");
@@ -94,7 +99,23 @@ void setup() {
 
 
 void sendData() {
-  Serial.print("Connect to the server... ");
+  Serial.println("60 sec avg");
+  // Display data part
+  int g_start_idx = 1;
+  //int g_stop_idx = 20; // or spectrumSize
+  int g_stop_idx = spectrumSize;
+  int g_step = 1;
+  
+  for (int i = g_start_idx; i < g_stop_idx; i+=g_step) {
+    Serial.print((i * sampleRate) / fftSize); // the starting frequency
+    Serial.print("\t"); // 
+    Serial.print(spectrum_avg60s[i]); // the spectrum value
+    Serial.print("\t"); // 
+  }
+  Serial.println(); 
+  Serial.println("60 sec avg end");
+  
+  Serial.println("Connect to the server... ");
   if (client.connect(server, 80)) {
     Serial.println("connected");
     // Make a HTTP request:
@@ -144,6 +165,7 @@ void loop() {
   int last_save = millis();
   int sample_cnt = 0;
   // Loop until 1000 ms is gone
+  // and save samples to avg array
   while ((millis() - last_save) < 1000) {
     // check if a new analysis is available
     if (fftAnalyzer.available()) {
@@ -156,29 +178,47 @@ void loop() {
       }
     }
   }
+  // Calculate average
   for (int i = 0; i < spectrumSize; i++) {
     spectrum_avg[i] /= sample_cnt;
   }
+  // Add all values to avg60s array
+  for (int i = 0; i < spectrumSize; i++) {
+    spectrum_avg60s[i] += spectrum_avg[i];
+    sample_cnt60s++;
+  }
 
   // Display data part
-  int g_start_idx = 1;
+  int g_start_idx = 0;
   //int g_stop_idx = 20; // or spectrumSize
   int g_stop_idx = spectrumSize;
   int g_step = 1;
   // print out the spectrum
-  for (int i = g_start_idx; i < g_stop_idx; i++) {
+  for (int i = g_start_idx; i < g_stop_idx; i+=g_step) {
     Serial.print((i * sampleRate) / fftSize); // the starting frequency
     Serial.print("\t"); // 
     Serial.print(spectrum_avg[i]); // the spectrum value
     Serial.print("\t"); // 
   }
-
   Serial.println(); 
+
+  // Clear avg array
+  for (int i = 0; i < spectrumSize; i++) {
+    spectrum_avg[i] = 0;
+  }
 
   // Data send part
   if ((millis() - last_send) > 60000) {
-    sendData();
     last_send = millis();
+    for (int i = 0; i < spectrumSize; i++) {
+      spectrum_avg60s[i] /= sample_cnt60s;
+    }
+    sample_cnt60s = 0;
+    sendData();
+    // Clear 60s avg array
+    for (int i = 0; i < spectrumSize; i++) {
+      spectrum_avg60s[i] = 0;
+    }    
   }
 
   // Response display part
