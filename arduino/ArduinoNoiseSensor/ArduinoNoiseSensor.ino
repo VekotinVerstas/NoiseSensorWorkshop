@@ -159,7 +159,7 @@ void sendData() {
     client.println("Connection: close");
     client.println();
   } else {
-    // Reboot 
+    connectWifi(); 
   }
   zero_vals60s();
 }
@@ -197,8 +197,7 @@ void loop() {
   } else {
     itoa((avgval/vals),buffer,10);
     //Serial.println("");
-    Serial.print(buffer);
-    Serial.println();
+    Serial.println(buffer);
     //Serial.println(" per 1 sec");
     vals60s[loops] = avgval/vals;
     avg_vals+=vals;
