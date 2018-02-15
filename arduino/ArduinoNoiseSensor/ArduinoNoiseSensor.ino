@@ -1,6 +1,7 @@
 #include "settings.h"
 #include <WiFi101.h>
 #include <WiFiClient.h>
+#include <I2S.h>
 #include <ArduinoSound.h>
 // #include <FastLED.h>
  
@@ -15,13 +16,26 @@ WiFiClient client;
 
 // I2S / FFT settings
 // sample rate for the input
-const int sampleRate = 8192;
+const int sampleRate = 20500;
 
 // size of the FFT to compute
-const int fftSize = 64;
+const int fftSize = 512;
 
 // size of the spectrum output, half of FFT size
 const int spectrumSize = fftSize / 2;
+
+unsigned long time=0;
+uint8_t vals=0;
+uint8_t first=1;
+
+uint64_t avg_vals=0;
+uint64_t loops=0;
+uint64_t avgval=0;
+uint64_t avg_60s = 0;
+uint64_t s60_len = 60;
+uint64_t vals60s[60];
+char buffer[16];
+
 
 // array to store spectrum output
 int spectrum[spectrumSize];
@@ -69,19 +83,12 @@ void setup() {
   Serial.begin(115200);      // initialize serial communication
   delay(1000);
   Serial.print("Start Serial ");
-  // setup the I2S audio input for the sample rate with 32-bits per sample
-  if (!AudioInI2S.begin(sampleRate, 32)) {
-    Serial.println("Failed to initialize I2S input!");
+  // start I2S at 16 kHz with 32-bits per sample
+  if (!I2S.begin(I2S_PHILIPS_MODE, sampleRate, 32)) {
+    Serial.println("Failed to initialize I2S!");
     while (1); // do nothing
   }
   Serial.println("I2S input initialized successfully");
-
-  // configure the I2S input as the input for the FFT analyzer
-  if (!fftAnalyzer.input(AudioInI2S)) {
-    Serial.println("Failed to set FFT analyzer input!");
-    while (1); // do nothing
-  }
-  Serial.println("FFT analyzer input initialized successfully");
 
   pinMode(ledpin, OUTPUT);      // set the LED pin mode
   // Check for the presence of the shield
@@ -98,23 +105,13 @@ void setup() {
 }
 
 
-void sendData() {
-  Serial.println("60 sec avg");
-  // Display data part
-  int g_start_idx = 1;
-  //int g_stop_idx = 20; // or spectrumSize
-  int g_stop_idx = spectrumSize;
-  int g_step = 1;
-  
-  for (int i = g_start_idx; i < g_stop_idx; i+=g_step) {
-    Serial.print((i * sampleRate) / fftSize); // the starting frequency
-    Serial.print("\t"); // 
-    Serial.print(spectrum_avg60s[i]); // the spectrum value
-    Serial.print("\t"); // 
+void zero_vals60s() {
+  for(int i = 0; i < s60_len; i++) {
+    vals60s[i] = 0;
   }
-  Serial.println(); 
-  Serial.println("60 sec avg end");
-  
+}
+
+void sendData() {
   Serial.println("Connect to the server... ");
   if (client.connect(server, 80)) {
     Serial.println("connected");
@@ -136,7 +133,12 @@ void sendData() {
     client.print(WiFi.RSSI());
 
     // The rest of parameters
-    client.print("&data=demotest&date=20180201");
+    client.print("&1s=");
+    for(int i = 0; i < s60_len; i++) {
+      itoa(vals60s[i],buffer,10);
+      client.print(buffer);
+      client.print(",");
+    }
 
     // Protocol
     client.println(" HTTP/1.1");
@@ -156,69 +158,69 @@ void sendData() {
     client.println("Accept: text/plain");
     client.println("Connection: close");
     client.println();
+  } else {
+    // Reboot 
   }
+  zero_vals60s();
 }
 
 
 void loop() {
-  // FFT part
   int last_save = millis();
   int sample_cnt = 0;
   // Loop until 1000 ms is gone
   // and save samples to avg array
   while ((millis() - last_save) < 1000) {
-    // check if a new analysis is available
-    if (fftAnalyzer.available()) {
-      sample_cnt++;
-      // read the new spectrum
-      fftAnalyzer.read(spectrum, spectrumSize);
-      // Add all values to avg array
-      for (int i = 0; i < spectrumSize; i++) {
-        spectrum_avg[i] += spectrum[i];
+    int32_t samples[fftSize];
+  
+    for (uint16_t i=0; i<fftSize; i++) {
+      int32_t sample = 0;
+      while ((sample == 0) || (sample == -1) ) {
+        sample = I2S.read();
       }
+      // convert to 18 bit signed
+      sample >>= 14;
+      samples[i] = sample;
     }
+    // find the 'peak to peak' max
+    int32_t maxsample=0, minsample=0;
+    for (uint16_t i=0; i<fftSize; i++) {
+      minsample = min(minsample, samples[i]);
+      maxsample = max(maxsample, samples[i]);
+    }
+    avgval+=(maxsample-minsample);
+    vals++;
   }
-  // Calculate average
-  for (int i = 0; i < spectrumSize; i++) {
-    spectrum_avg[i] /= sample_cnt;
+  if(first) {
+    first=0;
+    Serial.println("Skip first data (unstable data).");
+  } else {
+    itoa((avgval/vals),buffer,10);
+    //Serial.println("");
+    Serial.print(buffer);
+    Serial.println();
+    //Serial.println(" per 1 sec");
+    vals60s[loops] = avgval/vals;
+    avg_vals+=vals;
+    loops++;
+    avgval=0;
+    vals=0;
   }
-  // Add all values to avg60s array
-  for (int i = 0; i < spectrumSize; i++) {
-    spectrum_avg60s[i] += spectrum_avg[i];
-    sample_cnt60s++;
-  }
-
-  // Display data part
-  int g_start_idx = 0;
-  //int g_stop_idx = 20; // or spectrumSize
-  int g_stop_idx = spectrumSize;
-  int g_step = 1;
-  // print out the spectrum
-  for (int i = g_start_idx; i < g_stop_idx; i+=g_step) {
-    Serial.print((i * sampleRate) / fftSize); // the starting frequency
-    Serial.print("\t"); // 
-    Serial.print(spectrum_avg[i]); // the spectrum value
-    Serial.print("\t"); // 
-  }
-  Serial.println(); 
-
-  // Clear avg array
-  for (int i = 0; i < spectrumSize; i++) {
-    spectrum_avg[i] = 0;
-  }
-
-  // Data send part
-  if ((millis() - last_send) > 60000) {
+  
+  // Data send 
+  if ((millis() - last_send) >= (s60_len * 1000)) {
     last_send = millis();
-    for (int i = 0; i < spectrumSize; i++) {
-      spectrum_avg60s[i] /= sample_cnt60s;
-    }
-    sample_cnt60s = 0;
+    Serial.println();
+    // FIXME: For some reason this is not working correctly
+    avg_60s = avg_vals/loops;
+    itoa(avg_60s,buffer,10);
+    avg_vals=0;
+    loops=0;
+    //Serial.print(buffer);
+    //Serial.println();
+    //Serial.println(" per 60 secs");
+    //Serial.println("Sending ...");
     sendData();
-    // Clear 60s avg array
-    for (int i = 0; i < spectrumSize; i++) {
-      spectrum_avg60s[i] = 0;
-    }    
   }
 
   // Response display part
