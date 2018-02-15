@@ -1,7 +1,10 @@
 #include <WiFi101.h>
-char ssid[] = "network name";     // WLAN SSID
-char pass[] = "passkey";          // WLAN password
-IPAddress server(93,184,216,34);  // ip address matching the host header (example.org)
-char host[] = "example.org";       // Host header value
-char path[] = "/";                // GET path
+// WiFi settings
+
+#define WIFI_SSID "Helsingin kaupungin WLAN"
+#define WIFI_PASSWORD ""
+
+IPAddress server(12,34,567,890);  // ip address matching the host header (iot.fvh.fi)
+char host[] = "iot.example.com";       // Host header value
+char path[] = "/api/v1/noisesensor";             // URL path
 
