@@ -76,6 +76,12 @@ void connectWifi() {
   Serial.println("WiFi connected");
   WiFi.macAddress(mac);
   ip = WiFi.localIP();
+  for (byte i = 0; i < 6; ++i) {
+    char buf[3];
+    sprintf(buf, "%02X", mac[i]);
+    Serial.print(buf);
+  }
+  Serial.println(" = MAC ADDRESS");
 }
 
  
