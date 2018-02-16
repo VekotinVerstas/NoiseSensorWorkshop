@@ -76,6 +76,10 @@ void connectWifi() {
   Serial.println("WiFi connected");
   WiFi.macAddress(mac);
   ip = WiFi.localIP();
+  printMacAddr();
+}
+
+void printMacAddr() {
   for (byte i = 0; i < 6; ++i) {
     char buf[3];
     sprintf(buf, "%02X", mac[i]);
@@ -83,7 +87,6 @@ void connectWifi() {
   }
   Serial.println(" = MAC ADDRESS");
 }
-
  
 void setup() {
   Serial.begin(115200);      // initialize serial communication
@@ -118,6 +121,7 @@ void zero_vals60s() {
 }
 
 void sendData() {
+  printMacAddr();
   Serial.println("Connect to the server... ");
   if (client.connect(server, 80)) {
     Serial.println("connected");
@@ -164,8 +168,9 @@ void sendData() {
     client.println("Accept: text/plain");
     client.println("Connection: close");
     client.println();
+    client.stop();
   } else {
-    connectWifi(); 
+    // Reboot 
   }
   zero_vals60s();
 }
@@ -203,7 +208,8 @@ void loop() {
   } else {
     itoa((avgval/vals),buffer,10);
     //Serial.println("");
-    Serial.println(buffer);
+    Serial.print(buffer);
+    Serial.println();
     //Serial.println(" per 1 sec");
     vals60s[loops] = avgval/vals;
     avg_vals+=vals;
