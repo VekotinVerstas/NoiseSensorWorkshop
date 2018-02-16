@@ -170,7 +170,7 @@ void sendData() {
     client.println();
     client.stop();
   } else {
-    // Reboot 
+    connectWifi();
   }
   zero_vals60s();
 }
