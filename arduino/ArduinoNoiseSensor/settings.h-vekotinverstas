@@ -1,0 +1,10 @@
+#include <WiFi101.h>
+// WiFi settings
+
+#define WIFI_SSID "Vekotinverstas-guest"
+#define WIFI_PASSWORD "kaapelivekotin"
+
+IPAddress server(78,47,238,139);  // ip address matching the host header (iot.fvh.fi)
+char host[] = "iot.fvh.fi";       // Host header value
+char path[] = "/noisesensor/v1";             // URL path
+
