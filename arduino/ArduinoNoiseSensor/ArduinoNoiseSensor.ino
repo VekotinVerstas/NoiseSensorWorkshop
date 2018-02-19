@@ -46,7 +46,7 @@ int spectrum_avg60s[spectrumSize];
 int sample_cnt60s = 0;
 
 // create an FFT analyzer to be used with the I2S input
-FFTAnalyzer fftAnalyzer(fftSize);
+// FFTAnalyzer fftAnalyzer(fftSize);
 
 
 void connectWifi() {
