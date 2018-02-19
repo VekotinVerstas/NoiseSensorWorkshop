@@ -143,6 +143,10 @@ void sendData() {
     client.print("&rssi=");
     client.print(WiFi.RSSI());
 
+    // Add uptime parameter
+    client.print("&uptime=");
+    client.print(millis());
+
     // The rest of parameters
     client.print("&1s=");
     for(int i = 0; i < s60_len; i++) {
