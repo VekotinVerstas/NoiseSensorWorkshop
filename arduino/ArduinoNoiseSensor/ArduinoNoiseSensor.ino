@@ -8,7 +8,7 @@
 int ledpin = 6;
 
 // WiFi variables
-int status = WL_IDLE_STATUS;
+//int status = WL_IDLE_STATUS;
 int last_send = 0;
 byte mac[6];
 IPAddress ip;
@@ -50,6 +50,7 @@ FFTAnalyzer fftAnalyzer(fftSize);
 
 
 void connectWifi() {
+  int status=0;
   Serial.print("Attempting to connect to Network named: ");
   Serial.println(WIFI_SSID);          // print the network name (SSID);
   int connect_start = millis();
