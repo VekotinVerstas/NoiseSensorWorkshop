@@ -173,7 +173,7 @@ void sendData() {
     client.println("Accept: text/plain");
     client.println("Connection: close");
     client.println();
-    client.stop();
+    // client.stop();
   } else {
     connectWifi();
   }
