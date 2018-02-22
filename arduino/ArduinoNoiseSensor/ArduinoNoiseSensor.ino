@@ -26,7 +26,7 @@ const int spectrumSize = fftSize / 2;
 
 unsigned long time=0;
 uint8_t vals=0;
-uint8_t first=1;
+uint8_t first=2;
 
 uint64_t avg_vals=0;
 uint64_t loops=0;
@@ -207,15 +207,21 @@ void loop() {
     avgval+=(maxsample-minsample);
     vals++;
   }
-  if(first) {
-    first=0;
+  if ((loops % 10) == 0) {
+    Serial.println();
+  }
+  if(first>0) {
+    first--;
+    avgval=0;
+    vals=0;
+    vals60s[loops] = 0;
+    loops++;
     Serial.println("Skip first data (unstable data).");
   } else {
     itoa((avgval/vals),buffer,10);
-    //Serial.println("");
     Serial.print(buffer);
-    Serial.println();
-    //Serial.println(" per 1 sec");
+    // Serial.println();
+    Serial.print(",");
     vals60s[loops] = avgval/vals;
     avg_vals+=vals;
     loops++;
