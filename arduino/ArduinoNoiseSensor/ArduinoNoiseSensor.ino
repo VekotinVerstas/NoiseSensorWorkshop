@@ -186,12 +186,20 @@ void loop() {
   int sample_cnt = 0;
   // Loop until 1000 ms is gone
   // and save samples to avg array
+  int sampleLoops = 0;
+  int readLoops = 0;
   while ((millis() - last_save) < 1000) {
     int32_t samples[fftSize];
-  
     for (uint16_t i=0; i<fftSize; i++) {
       int32_t sample = 0;
+      readLoops = 0;
       while ((sample == 0) || (sample == -1) ) {
+        readLoops++;
+        if (((readLoops % 1000) == 0) && (readLoops >= 5000)) {
+          Serial.println();  
+          Serial.print("ReadLoops! ");
+          Serial.println(readLoops);
+        }
         sample = I2S.read();
       }
       // convert to 18 bit signed
@@ -221,7 +229,14 @@ void loop() {
     itoa((avgval/vals),buffer,10);
     Serial.print(buffer);
     // Serial.println();
+    if (readLoops > 5000) {
+      Serial.print("(l=");
+      Serial.print(readLoops);
+      Serial.print("()");
+    }
     Serial.print(",");
+    /*
+    */
     vals60s[loops] = avgval/vals;
     avg_vals+=vals;
     loops++;
