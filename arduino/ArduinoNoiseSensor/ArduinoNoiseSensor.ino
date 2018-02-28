@@ -93,13 +93,7 @@ void setup() {
   Serial.begin(115200);      // initialize serial communication
   delay(1000);
   Serial.print("Start Serial ");
-  // start I2S at 16 kHz with 32-bits per sample
-  if (!I2S.begin(I2S_PHILIPS_MODE, sampleRate, 32)) {
-    Serial.println("Failed to initialize I2S!");
-    while (1); // do nothing
-  }
-  Serial.println("I2S input initialized successfully");
-
+  i2s_begin();
   pinMode(ledpin, OUTPUT);      // set the LED pin mode
   // Check for the presence of the shield
   Serial.print("WiFi101 shield: ");
@@ -114,6 +108,14 @@ void setup() {
   digitalWrite(ledpin, HIGH);
 }
 
+void i2s_begin() {
+  // start I2S at 16 kHz with 32-bits per sample
+  if (!I2S.begin(I2S_PHILIPS_MODE, sampleRate, 32)) {
+    Serial.println("Failed to initialize I2S!");
+    while (1); // do nothing
+  }
+  Serial.println("I2S input initialized successfully");
+}
 
 void zero_vals60s() {
   for(int i = 0; i < s60_len; i++) {
@@ -195,10 +197,15 @@ void loop() {
       readLoops = 0;
       while ((sample == 0) || (sample == -1) ) {
         readLoops++;
-        if (((readLoops % 1000) == 0) && (readLoops >= 5000)) {
+        //if (((readLoops % 1000) == 0) && (readLoops >= 5000)) {
+        if (readLoops >= 10000) {
           Serial.println();  
           Serial.print("ReadLoops! ");
           Serial.println(readLoops);
+          I2S.end();
+          delay(2000);
+          i2s_begin();
+          return;
         }
         sample = I2S.read();
       }
